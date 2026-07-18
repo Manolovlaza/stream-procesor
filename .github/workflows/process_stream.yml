@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       stream_url:
-        description: 'URL del directo (Kick, Twitch, YouTube)'
+        description: 'URL of Kick, Twitch, YouTube stream'
         required: true
         default: 'https://kick.com/davooxeneize/videos/7a39ebc9-bae0-4dad-80e2-29439a6f0989'
 
@@ -32,8 +32,8 @@ jobs:
       - name: Run Stream Processor
         env:
           STREAM_URL: ${{ github.event.client_payload.stream_url || github.event.inputs.stream_url }}
-          API_URL: "https://new-api.stiflercr7.qzz.io/v1/audio/transcriptions"
-          API_KEY: "opencode"
+          API_URL: ${{ secrets.API_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
         run: |
           python process_stream.py
 

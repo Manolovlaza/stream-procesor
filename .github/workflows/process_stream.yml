@@ -1,0 +1,38 @@
+name: Stream Processor Worker
+
+on:
+  repository_dispatch:
+    types: [process_stream]
+  workflow_dispatch:
+    inputs:
+      stream_url:
+        description: 'URL del directo (Kick, Twitch, YouTube)'
+        required: true
+        default: 'https://kick.com/davooxeneize/videos/7a39ebc9-bae0-4dad-80e2-29439a6f0989'
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          pip install -U yt-dlp requests
+
+      - name: Run Stream Processor
+        env:
+          STREAM_URL: ${{ github.event.client_payload.stream_url || github.event.inputs.stream_url }}
+          API_URL: "https://new-api.stiflercr7.qzz.io/v1/audio/transcriptions"
+          API_KEY: "opencode"
+        run: |
+          python process_stream.py

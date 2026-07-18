@@ -7,24 +7,27 @@ api_key = os.environ.get("API_KEY", "opencode")
 
 print(f"🚀 Iniciando procesamiento para: {stream_url}")
 
-# 1. Descarga ultra-rápida de audio nativo con yt-dlp (-N 16, 0.00s de recodificación)
-print("📥 1. Descargando pista de audio nativa a 1 Gbps...")
-cmd_dl = ["yt-dlp", "-N", "16", "-f", "worst", "-x", "--audio-format", "copy", stream_url, "-o", "full_audio.m4a"]
+# 1. Descarga ultra-rápida de audio nativo con yt-dlp (-N 16 en 16 hilos)
+print("📥 1. Descargando pista de audio nativa a 1 Gbps con 16 hilos...")
+cmd_dl = ["yt-dlp", "-N", "16", "-f", "worst", "-x", stream_url, "-o", "full_audio.%(ext)s"]
 res_dl = subprocess.run(cmd_dl, capture_output=True, text=True)
 
-if not os.path.exists("full_audio.m4a"):
+# Buscar el archivo de audio descargado (full_audio.m4a, full_audio.mp3, etc.)
+audio_files = [f for f in os.listdir(".") if f.startswith("full_audio.")]
+if not audio_files:
     print("❌ Error descargando audio con yt-dlp:", res_dl.stderr)
     exit(1)
 
-file_size_mb = os.path.getsize("full_audio.m4a") / (1024 * 1024)
-print(f"✅ Audio descargado exitosamente: {file_size_mb:.2f} MB")
+input_audio = audio_files[0]
+file_size_mb = os.path.getsize(input_audio) / (1024 * 1024)
+print(f"✅ Audio descargado exitosamente: {input_audio} ({file_size_mb:.2f} MB)")
 
 # 2. Troceado instantáneo en bloques de 45 minutos con FFmpeg
 print("✂️ 2. Troceando audio en bloques de 45 minutos con FFmpeg...")
-cmd_split = ["ffmpeg", "-i", "full_audio.m4a", "-f", "segment", "-segment_time", "2700", "-c", "copy", "chunk_%02d.m4a"]
+cmd_split = ["ffmpeg", "-i", input_audio, "-f", "segment", "-segment_time", "2700", "-c", "copy", "chunk_%02d.mp3"]
 subprocess.run(cmd_split, capture_output=True)
 
-chunks = sorted([f for f in os.listdir(".") if f.startswith("chunk_") and f.endswith(".m4a")])
+chunks = sorted([f for f in os.listdir(".") if f.startswith("chunk_") and f.endswith(".mp3")])
 print(f"📦 Creados {len(chunks)} bloques de audio para transcripción paralela.")
 
 # 3. Transcripción en paralelo usando el pool de Cloudflare
@@ -32,9 +35,8 @@ print("⚡ 3. Enviando bloques en paralelo a New-API (Pool de Cloudflare)...")
 headers = {"Authorization": f"Bearer {api_key}"}
 
 def transcribe_chunk(chunk_file, idx):
-    offset = idx * 2700.0
     with open(chunk_file, "rb") as f:
-        files = {"file": (chunk_file, f, "audio/m4a")}
+        files = {"file": (chunk_file, f, "audio/mpeg")}
         data = {"model": "whisper-large-v3-turbo", "response_format": "verbose_json"}
         t0 = time.time()
         resp = requests.post(api_url, headers=headers, files=files, data=data, timeout=300)
@@ -46,7 +48,7 @@ def transcribe_chunk(chunk_file, idx):
         print(f"  • Bloque {idx:02d} ({chunk_file}): HTTP 200 OK en {elapsed:.2f}s ({len(segments)} subtítulos)")
         return idx, segments
     else:
-        print(f"  • Bloque {idx:02d} ({chunk_file}): ERROR HTTP {resp.status_code}")
+        print(f"  • Bloque {idx:02d} ({chunk_file}): ERROR HTTP {resp.status_code} - {resp.text[:100]}")
         return idx, []
 
 start_t = time.time()

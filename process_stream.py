@@ -9,7 +9,7 @@ print(f"🚀 Iniciando procesamiento para: {stream_url}")
 
 # 1. Descarga ultra-rápida de audio nativo con yt-dlp (-N 16 en 16 hilos)
 print("📥 1. Descargando pista de audio nativa a 1 Gbps con 16 hilos...")
-cmd_dl = ["yt-dlp", "-N", "16", "-f", "worst", "-x", stream_url, "-o", "full_audio.%(ext)s"]
+cmd_dl = ["yt-dlp", "--impersonate", "chrome", "-N", "16", "-f", "worst", "-x", stream_url, "-o", "full_audio.%(ext)s"]
 res_dl = subprocess.run(cmd_dl, capture_output=True, text=True)
 
 # Buscar el archivo de audio descargado (full_audio.m4a, full_audio.mp3, etc.)

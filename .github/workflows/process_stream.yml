@@ -27,7 +27,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
-          pip install -U yt-dlp requests
+          pip install -U "yt-dlp[curl-cffi]" requests
 
       - name: Run Stream Processor
         env:
